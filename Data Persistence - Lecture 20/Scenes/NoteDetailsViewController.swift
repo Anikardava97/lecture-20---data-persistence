@@ -7,9 +7,16 @@
 
 import UIKit
 
-final class NoteDetailsViewController: UIViewController {
+// MARK: - protocol
+protocol EditNoteDelegate: AnyObject {
+    func didEdit(noteTitle: String, noteDescription: String)
+}
+
+final class NoteDetailsViewController: UIViewController, UITextViewDelegate {
     
     // MARK: - Properties
+    
+    weak var delegate: EditNoteDelegate?
     
     private lazy var mainStackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [titleLabel, descriptionLabel])
@@ -23,20 +30,36 @@ final class NoteDetailsViewController: UIViewController {
         return stackView
     }()
     
-    private let titleLabel: UITextField = {
-        let textField = UITextField()
-        textField.font = UIFont.systemFont(ofSize: 24, weight: .bold)
-        textField.textColor = UIColor(red: 106/255, green: 62/255, blue: 161/255, alpha: 1.0)
-        textField.textAlignment = .center
-        return textField
+    private let titleLabel: UITextView = {
+        let textView = UITextView()
+        textView.font = UIFont.systemFont(ofSize: 24, weight: .bold)
+        textView.textColor = UIColor(red: 106/255, green: 62/255, blue: 161/255, alpha: 1.0)
+        textView.textAlignment = .center
+        textView.isScrollEnabled = false
+        textView.isEditable = true
+        textView.backgroundColor = .clear
+        return textView
     }()
     
-    private let descriptionLabel: UITextField = {
-        let textField = UITextField()
-        textField.font = UIFont.systemFont(ofSize: 16, weight: .regular)
-        textField.textColor = UIColor(red: 106/255, green: 62/255, blue: 161/255, alpha: 0.6)
-        textField.textAlignment = .center
-        return textField
+    private let descriptionLabel: UITextView = {
+        let textView = UITextView()
+        textView.font = UIFont.systemFont(ofSize: 16, weight: .regular)
+        textView.textColor = UIColor(red: 106/255, green: 62/255, blue: 161/255, alpha: 0.6)
+        textView.textAlignment = .center
+        textView.isScrollEnabled = false
+        textView.isEditable = true
+        textView.backgroundColor = .clear
+        return textView
+    }()
+    
+    private let saveButton: UIButton = {
+        let button = UIButton()
+        button.backgroundColor = .blue
+        button.layer.cornerRadius = 8
+        button.backgroundColor = UIColor(red: 60/255, green: 13/255, blue: 122/255, alpha: 0.8)
+        button.setTitle("Save Changes", for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        return button
     }()
     
     // MARK: - ViewLifeCycle
@@ -46,13 +69,44 @@ final class NoteDetailsViewController: UIViewController {
         setupBackground()
         setupSubviews()
         setupConstraints()
-        setupUI()
+        setUpTextViews()
+        setUpSaveButtonAction()
     }
     
     // MARK: - Configure
     func configure(with model: NoteDetails) {
         titleLabel.text = model.title
         descriptionLabel.text = model.description
+    }
+    
+    //MARK: - Actions
+    private func setUpTextViews() {
+        titleLabel.delegate = self
+        descriptionLabel.delegate = self
+        saveButton.isEnabled = false
+    }
+    
+    func textViewDidChange(_ textView: UITextView) {
+        if textView == titleLabel || textView == descriptionLabel {
+            saveButton.isEnabled = !(titleLabel.text.isEmpty) && !(descriptionLabel.text.isEmpty)
+        }
+    }
+    //წინა გვერდზე მაინც არ ინახავს რედაქტირებულ ნოუთს და ვერ ვხვდები რატო
+    
+    private func setUpSaveButtonAction() {
+        saveButton.addAction(
+            UIAction(
+                handler: { [weak self] _ in
+                    guard let self else { return }
+                    delegate?.didEdit(
+                        noteTitle: titleLabel.text ?? "",
+                        noteDescription: descriptionLabel.text ?? ""
+                    )
+                    navigationController?.popViewController(animated: true)
+                }
+            ),
+            for: .touchUpInside
+        )
     }
     
     // MARK: - Private Methods
@@ -62,41 +116,18 @@ final class NoteDetailsViewController: UIViewController {
     
     private func setupSubviews() {
         view.addSubview(mainStackView)
+        mainStackView.addArrangedSubview(titleLabel)
+        mainStackView.addArrangedSubview(descriptionLabel)
+        mainStackView.addArrangedSubview(saveButton)
     }
     
     private func setupConstraints() {
         NSLayoutConstraint.activate([
             mainStackView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             mainStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            mainStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+            mainStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            
+            saveButton.heightAnchor.constraint(equalToConstant: 56)
         ])
-    }
-    
-    private var isEditable: Bool = false
-    
-    private lazy var saveButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(barButtonSystemItem: .save, target: self, action: #selector(saveChanges))
-        return button
-    }()
-    
-    @objc func toggleEditing() {
-        isEditable.toggle()
-        titleLabel.isUserInteractionEnabled = isEditable
-        descriptionLabel.isUserInteractionEnabled = isEditable
-        setupUI()
-    }
-    
-    @objc func saveChanges() {
-        let newTitle = titleLabel.text ?? ""
-        let newDescription = descriptionLabel.text ?? ""
-        toggleEditing()
-    }
-    
-    private func setupUI() {
-        if isEditable {
-            navigationItem.rightBarButtonItem = saveButton
-        } else {
-            navigationItem.rightBarButtonItem = editButtonItem
-        }
     }
 }

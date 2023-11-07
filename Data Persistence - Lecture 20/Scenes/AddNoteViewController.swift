@@ -7,8 +7,6 @@
 
 import UIKit
 
-import UIKit
-
 // MARK: - protocol
 protocol AddNewNoteDelegate: AnyObject {
     func addNewNote(with note: NoteDetails)
@@ -73,7 +71,6 @@ final class AddNoteViewController: UIViewController {
         view.addSubview(mainStackView)
         mainStackView.addArrangedSubview(titleTextField)
         mainStackView.addArrangedSubview(descriptionTextField)
-        
         mainStackView.addArrangedSubview(saveButton)
     }
     

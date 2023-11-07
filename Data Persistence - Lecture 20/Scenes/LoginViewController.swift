@@ -9,16 +9,22 @@ import UIKit
 
 class KeychainManager {
     
+    static let shared = KeychainManager()
+    
     enum KeychainError: Error {
         case duplicateEntry
         case unknown(OSStatus)
     }
     
-    static func save(service: String, account: String, password: Data) throws {
+    //SAVE function
+    func save(
+        username: String,
+        password: Data
+    ) throws {
+        
         let query: [String: AnyObject] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service as AnyObject,
-            kSecAttrAccount as String: account as AnyObject,
+            kSecAttrAccount as String: username as AnyObject,
             kSecValueData as String: password as AnyObject
         ]
         
@@ -33,11 +39,32 @@ class KeychainManager {
         }
         print("Password saved successfully")
     }
+    
+    //GET function
+    func getPasswordForUsername(username: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: username,
+            kSecReturnData as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        var dataTypeRef: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+        
+        if status == errSecSuccess, let data = dataTypeRef as? Data {
+            if let password = String(data: data, encoding: .utf8) {
+                return password
+            }
+        }
+        return nil
+    }
 }
 
 class LoginViewController: UIViewController {
     
-    //MARK: - Properties
+    //MARK: - Propertiestr
+    private let keychainManager = KeychainManager()
     
     private let mainStackView: UIStackView = {
         let stackView = UIStackView()
@@ -136,42 +163,55 @@ class LoginViewController: UIViewController {
         setUpSubviews()
         setUpConstraints()
         setUpSignInButton()
-        saveCredentialsToKeychain()
-        validateCredentials()
-//        isFirstTimeLogin()
-        recordFirstTimeLogin()
-//        displayWelcomeAlert()
     }
-    
     
     //MARK: - Credentials
-    
-    func saveCredentialsToKeychain() {
-        do {
-            try KeychainManager.save(service: "NotesApp", account: "Ani", password: "password".data(using: .utf8) ?? Data())
+    private func isFirstTimeSignUp() {
+        if isFirstTimeLogin() {
+            print("Its first time")
+            recordFirstTimeLogin()
+            saveUserAndPasswordToKeychain()
+        } else {
+            checkUserAndPasswordToKeychain()
         }
-        catch {
-            print("Error saving password: \(error)")
-        }
     }
     
-    func validateCredentials() {
-        
-        
+    private func isFirstTimeLogin() -> Bool {
+        !UserDefaults.standard.bool(forKey: "FirstTimeLogin")
     }
     
-    func isFirstTimeLogin() -> Bool {
-        UserDefaults.standard.bool(forKey: "FirstTimeLogin")
-    }
-    
-    func recordFirstTimeLogin() {
+    private func recordFirstTimeLogin() {
         UserDefaults.standard.set(true, forKey: "FirstTimeLogin")
     }
     
-//    func displayWelcomeAlert() {
-//        let alert = UIAlertController(title: "Welcome!", message: "Welcome to the Secure NoteApp", preferredStyle: .alert)
-//    }
-//    
+    private func displayWelcomeAlert() {
+        let alert = UIAlertController(title: "Welcome!", message: "Welcome to the Secure NoteApp", preferredStyle: .alert)
+    }
+    
+    private func saveUserAndPasswordToKeychain() {
+        guard let username = usernameTextField.text,
+              let passwordString = passwordTextField.text,
+              let password = passwordString.data(using: .utf8) else {
+            return }
+        do {
+            try keychainManager.save(username: username, password: password)
+        } catch {
+            print("Error saving credentials: \(error)")
+        }
+    }
+    
+    private func checkUserAndPasswordToKeychain() {
+        if let username = usernameTextField.text,
+           let password = passwordTextField.text {
+            if let savedCredentials = KeychainManager.shared.getPasswordForUsername(username: username),
+               savedCredentials == password {
+                print("Welcome Back")
+            } else {
+                print("Please, Enter Correct Password")
+            }
+        }
+    }
+    
     //MARK: - Actions
     private func setUpSignInButton() {
         signInButton.isEnabled = false
@@ -226,6 +266,7 @@ class LoginViewController: UIViewController {
     private func navigateToNoteListVC() {
         let noteListPage = NoteListViewController()
         navigationController?.pushViewController(noteListPage, animated: true)
+        isFirstTimeSignUp()
     }
 }
 

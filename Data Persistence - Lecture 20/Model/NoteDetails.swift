@@ -8,8 +8,8 @@
 import UIKit
 
 struct NoteDetails {
-    let title: String
-    let description: String
+    var title: String
+    var description: String
     
     static let myNotes = [
         NoteDetails(

@@ -38,6 +38,9 @@ final class NoteListViewController: UIViewController {
         setupTableView()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        tableView.reloadData()
+    }
     //MARK: - Private Methods
     private func setupBackground() {
         view.backgroundColor = .white
@@ -67,7 +70,6 @@ final class NoteListViewController: UIViewController {
             
             notesTitleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
             notesTitleLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16)
-            
         ])
     }
     
@@ -112,6 +114,7 @@ extension NoteListViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let noteDetailsViewController = NoteDetailsViewController()
         noteDetailsViewController.configure(with: notes[indexPath.row])
+        noteDetailsViewController.delegate = self
         navigationController?.pushViewController(noteDetailsViewController, animated: true)
     }
 }
@@ -121,6 +124,17 @@ extension NoteListViewController: AddNewNoteDelegate {
     func addNewNote(with note: NoteDetails) {
         notes.append(note)
         tableView.reloadData()
+    }
+}
+
+// MARK: - EditNote
+extension NoteListViewController: EditNoteDelegate {
+    func didEdit(noteTitle: String, noteDescription: String) {
+        if let index = notes.firstIndex(where: { $0.title == noteTitle && $0.description == noteDescription }) {
+            notes[index].title = noteTitle
+            notes[index].description = noteDescription
+            tableView.reloadData()
+        }
     }
 }
 
